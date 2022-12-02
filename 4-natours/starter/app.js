@@ -6,8 +6,12 @@ const userRouter = require('./routers/userRouters');
 const app = express();
 
 // 1) MIDDLEWARE
-app.use(morgan('dev'));
+if (process.env.NODE_ENV === 'development') {
+  console.log(process.env.NODE_ENV);
+  app.use(morgan('dev'));
+}
 app.use(express.json()); // è il middleware per avere i dati in POST su req => mi permette di usare req.body
+app.use(express.static(`${__dirname}/public`)); // creo una radice per cercare i file. Adesso nel browser posso accedere al file html con express
 
 app.use((req, res, next) => {
   console.log('Hello from the MiddleWare! 👌');
