@@ -17,11 +17,13 @@ mongoose
   .connect(DB, {
     useNewUrlParcer: true,
     useCreateIndex: true,
-    useFindAndModify: false
+    useFindAndModify: false,
+    useUnifiedTopology: true
   })
   .then(() => {
     console.log('connessione stabilita!');
-  });
+  })
+  .catch(err => console.log('Could not connect', err));
 
 // console.log(app.get('env')); //  ritorna l'ambiente in cui siamo adesso => development
 // console.log(process.env); // ritorna gli ambienti impostati da Node.js
