@@ -1,6 +1,6 @@
 const mongoose = require('mongoose'); // per usare MongoDB
 const slugify = require('slugify');
-const validator = require('validator');
+// const validator = require('validator');
 
 // 1. creo lo schema
 const tourSchema = new mongoose.Schema(
