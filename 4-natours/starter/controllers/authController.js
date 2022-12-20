@@ -1,12 +1,24 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
 const User = require('../models/userModel');
 const AppError = require('./../utils/appError');
 const catchAsync = require('../utils/catchAsync');
+const sendEmail = require('../utils/email');
 
 const signToken = id => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN
+  });
+};
+
+const createAndSandToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+    data: { user: user }
   });
 };
 
@@ -22,13 +34,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     passwordChangedAt: req.body.passwordChangedAt
   });
 
-  const token = signToken(newUser._id);
-
-  res.status(201).json({
-    status: 'success',
-    token,
-    data: { user: newUser }
-  });
+  createAndSandToken(newUser, 201, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -51,11 +57,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   // 3) invia al client il token JWT
 
-  const token = signToken(user._id);
-  res.status(201).json({
-    status: 'success',
-    token
-  });
+  createAndSandToken(user, 200, res);
 });
 
 //Creo un metodo che poi utilizzerò come middleware per verificare la protezione del route
@@ -109,3 +111,102 @@ exports.restictTo = (...roles) => {
     next();
   };
 };
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // 1) Get user based on POSTed email
+
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    return next(new AppError('There is no user with that email address.', 404));
+  }
+
+  // 2) generate random token
+  // essendo Qualche linea di codice Ed essendo relativo all'utente lo mettiamo nello userModel
+  const resetToken = user.createPasswordResetToken();
+
+  // l'utente è Stato modificato nella funzione sopra, ma non è stato salvato per cui lo salvo adesso.Devo però disattivare tutti i validatori perché ho cambiato soltanto due dati, E non c'è nessuno dei campi richiesti che vi sto andando a salvare per cui darebbe errore
+  await user.save({ validateBeforeSave: false });
+
+  // 3) send token via email
+  // Mandiamo direttamente l'url per fare il reset della Password
+  const resetURL = `${req.protocol}://${req.get(
+    'host'
+  )}/api/v1/users/resetPassword/${resetToken}`;
+
+  const message = `Forgot your password? Submit e PATCH request with your New password and passwordconfirm to: ${resetURL}.\nIf you didn't forget your password please ignore this message.`;
+
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: 'Your password reset token (valid for 10 minutes).',
+      message
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Token sent to the user email.'
+    });
+  } catch (error) {
+    // In caso di un qualsiasi errore annullo la presenza se del token che della sua scadenza
+    user.passwordResetToken = undefined;
+    user.passwordResetExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    next(
+      new AppError(
+        'There was an error sending the email. Try again later.',
+        500
+      )
+    );
+  }
+});
+
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  // 1.Cerca l'utente in funzione del token passato dal link
+  //Clicchiamo il token ricevuto dal link e lo compariamo con quello salvato in memoria. Lo troviamo dentro req.param.token per come lo abbiamo definito all'interno della stringa del link.
+  // Posso anche creare una funzione a parte che fa questa Criptatura perché la uso due volte.
+  console.log(req.params.token);
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpire: { $gt: Date.now() }
+  });
+
+  // 2. Verifica che il token non sia scaduto e che l'utente esista, Imposta nuova Password
+  if (!user) {
+    return next(new AppError('Token is invalid or has expired.', 400));
+  }
+
+  // 3. Aggiorna la proprietà password cambiata il: passwordChangedAt
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpire = undefined;
+  await user.save(); // Ci penserà il middleware pre-save a fare la criptatura della password, Infatti non spengiamo i validatori
+  // 4. Manda il JWT Al client per effettuare il login. È anche il motivo per cui utilizziamo Save e non update, proprio perché vogliamo che parta il middleware di Save e partano i validatori
+  createAndSandToken(user, 200, res);
+});
+
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // 1. Get user from collection
+  // L'utente è già loggato per cui hoil suo id perché è stato inserito nel middleware protect
+  const user = await User.findById(req.user.id).select('+password');
+
+  // 2. check if it PPSTed current password is correct
+  if (!(await user.correctPassword(req.body.currentPassword, user.password))) {
+    return next(new AppError('Your current password is wrong.', 404));
+  }
+
+  // 3. if so, update password
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+  // User.findByIdandUpdate non funziona come ci si aspetta, non fa partire i middlware e i validatori
+  // 4. login the user again sending new JWT Token
+  createAndSandToken(user, 200, res);
+});

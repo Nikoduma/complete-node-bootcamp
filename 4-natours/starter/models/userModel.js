@@ -1,7 +1,7 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose'); // per usare MongoDB
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
-const AppError = require('../utils/appError');
 
 // 1. creo lo schema
 const userSchema = new mongoose.Schema(
@@ -50,7 +50,9 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
       select: false // non lo mostra mai nelle query, non lo manda mai al client
     },
-    passwordChangedAt: Date
+    passwordChangedAt: Date,
+    passwordResetToken: String,
+    passwordResetExpire: Date
   },
   {
     // Specifico qui i parametri dello schema sono fuori dallo schema stesso, come secondo oggetto nella definizione dello schema appunto. Adesso specifico che ogni volta che si effettua l'estrazione sia in JSON sia in oggetto dello schema,le chiavi virtuali compaiono appunto
@@ -74,6 +76,17 @@ userSchema.pre('save', async function(next) {
 
   // Cancello la password di conferma
   this.passwordConfirm = undefined;
+});
+
+userSchema.pre('save', async function(next) {
+  // Verifico che Sia stata effettivamente modificata la password oppure che questo documento non sia uno nuovo per prima di eseguire le operazioni seguenti.
+  if (!this.isModified('password') || this.isNew) return next();
+
+  // Può succedere che il cambio della password avvenga con un piccolo ritardo virgola e quindi la funzione sottostante Può creare problemi in caso di verifica della validità del JWT In funzione proprio del cambio password.Per evitare questo problema sottraiamo un secondo al tempo, mettiamo cioè la data del cambio della password un secondo nel passato. Non è un metodo totalmente accurato però funziona. In questo modo ci assicuriamo che il token viene sempre creato dopo che la password è stata cambiata
+
+  this.passwordChangedAt = Date.now() - 1000;
+
+  next();
 });
 
 // Instance Methods - Metodi disponibili nelle ISTANZE di questo oggetto
@@ -100,6 +113,23 @@ userSchema.methods.changePasswordAfter = function(JWTTimestamp) {
 
   return false;
 };
+
+userSchema.methods.createPasswordResetToken = function() {
+  // si crea un token che è una password temporanea
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  // crittiamo la password temporanea
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  console.log({ resetToken }, this.passwordResetToken);
+
+  this.passwordResetExpire = Date.now() + 10 * 60 * 1000; // 10 miuti poi scade
+
+  return resetToken;
+};
+
 // userSchema.pre(/^find/, function(next) {
 //   //this punta alla query
 //   this.find({ secretTours: { $ne: true } });

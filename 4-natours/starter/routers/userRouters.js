@@ -8,6 +8,14 @@ const router = express.Router();
 router.post('/signup', authController.signUp);
 router.post('/login', authController.login);
 
+router.post('/forgotPassword', authController.forgotPassword);
+router.patch('/resetPassword/:token', authController.resetPassword); // Devo fare il patch della password quindi devo modificare il documento
+router.patch(
+  '/updateMyPassword/',
+  authController.protect,
+  authController.updatePassword
+);
+
 router
   .route('/')
   .get(authController.protect, userController.getAllUsers)
