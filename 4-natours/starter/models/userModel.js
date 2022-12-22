@@ -52,10 +52,15 @@ const userSchema = new mongoose.Schema(
     },
     passwordChangedAt: Date,
     passwordResetToken: String,
-    passwordResetExpire: Date
+    passwordResetExpire: Date,
+    active: {
+      type: Boolean,
+      default: true,
+      select: false
+    }
   },
   {
-    // Specifico qui i parametri dello schema sono fuori dallo schema stesso, come secondo oggetto nella definizione dello schema appunto. Adesso specifico che ogni volta che si effettua l'estrazione sia in JSON sia in oggetto dello schema,le chiavi virtuali compaiono appunto
+    // Specifico qui i parametri dello schema sono fuori dallo schema stesso, come secondo oggetto nella definizione dello schema appunto. Adesso specifico che ogni volta che si effettua l'estrazione sia in JSON sia in oggetto dello schema,le chiavi virtuali compaiono
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
@@ -130,12 +135,15 @@ userSchema.methods.createPasswordResetToken = function() {
   return resetToken;
 };
 
-// userSchema.pre(/^find/, function(next) {
-//   //this punta alla query
-//   this.find({ secretTours: { $ne: true } });
-//   this.start = Date.now(); // È un oggetto come un'altro e posso aggiungere chiavi e proprietà
-//   next();
-// });
+// QUERY MIDDLEWARE
+userSchema.pre(/^find/, function(next) {
+  // ci serve una funzione regolare e non una arrow perché altrimenti non ho accesso al parametro next
+  //this punta alla query
+  this.find({ active: { $ne: false } });
+  // this.find({ secretTours: { $ne: true } });
+  // this.start = Date.now(); // È un oggetto come un'altro e posso aggiungere chiavi e proprietà
+  next();
+});
 
 // userSchema.post(/^find/, function(docs, next) {
 //   console.log(`the query tooks ${Date.now() - this.start} milliseconds.`);

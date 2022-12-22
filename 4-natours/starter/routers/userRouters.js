@@ -15,6 +15,8 @@ router.patch(
   authController.protect,
   authController.updatePassword
 );
+router.patch('/updateMe/', authController.protect, userController.updateMe);
+router.delete('/deleteMe/', authController.protect, userController.deleteMe); // anche se non cacelliamo veramente niere dal db, ma modifico il valore active a false dell'utente, uso delete invece di patch nella chiamata html
 
 router
   .route('/')
