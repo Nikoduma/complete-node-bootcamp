@@ -53,6 +53,11 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     passwordResetToken: String,
     passwordResetExpire: Date,
+    loginAttempt: {
+      type: Number,
+      default: 0,
+      select: false
+    },
     active: {
       type: Boolean,
       default: true,
@@ -69,9 +74,10 @@ const userSchema = new mongoose.Schema(
 // 1.1 Virtual properties
 // userSchema.virtual('durationWeeks').get(function() {});
 
-// 1.2 Document middleware: Vengono lanciati prima .save() e .create() => invece .insertMany() Non scatena il middleware Basato su Save
+// 1.2 DOCUMENT MIDDLEWARE: Vengono lanciati prima .save() e .create() => invece .insertMany() Non scatena il middleware Basato su Save
 // Qui lo utilizziamo per criptare la password prima che venga salvata: PASSWORD ENCRYPTION
 
+// ON SAVE MIDDLEWARE
 userSchema.pre('save', async function(next) {
   //Uso un metodo di mongoose per verificare che effettivamente il campo password è stato modificato, altrimenti non lo tocco
   if (!this.isModified('password')) return next();
@@ -94,7 +100,17 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Instance Methods - Metodi disponibili nelle ISTANZE di questo oggetto
+// QUERY MIDDLEWARE
+userSchema.pre(/^find/, function(next) {
+  // ci serve una funzione regolare e non una arrow perché altrimenti non ho accesso al parametro next
+  //this punta alla query
+  this.find({ active: { $ne: false } });
+  // this.find({ secretTours: { $ne: true } });
+  // this.start = Date.now(); // È un oggetto come un'altro e posso aggiungere chiavi e proprietà
+  next();
+});
+
+// INSTANCE METHODS - Metodi disponibili nelle ISTANZE di questo oggetto
 userSchema.methods.correctPassword = async function(
   candidatePassword,
   userPassword
@@ -103,6 +119,26 @@ userSchema.methods.correctPassword = async function(
 
   // Usiamo la funzione compare che ritorna vero o falso.
   return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+// Wrong Passwords attempt Handling
+userSchema.methods.resetLoginTimer = function() {
+  return setTimeout(() => {
+    this.loginAttempt = 0;
+    this.save({ validateBeforeSave: false });
+  }, process.env.LOGIN_ATTEMPT_TIMER * 1000 * 60);
+};
+
+userSchema.methods.wrongAttempt = function() {
+  // eslint-disable-next-line no-plusplus
+  this.loginAttempt = ++this.loginAttempt;
+  this.save({ validateBeforeSave: false });
+};
+
+userSchema.methods.resetLoginAttempt = function() {
+  // eslint-disable-next-line no-plusplus
+  this.loginAttempt = 0;
+  this.save({ validateBeforeSave: false });
 };
 
 userSchema.methods.changePasswordAfter = function(JWTTimestamp) {
@@ -134,16 +170,6 @@ userSchema.methods.createPasswordResetToken = function() {
 
   return resetToken;
 };
-
-// QUERY MIDDLEWARE
-userSchema.pre(/^find/, function(next) {
-  // ci serve una funzione regolare e non una arrow perché altrimenti non ho accesso al parametro next
-  //this punta alla query
-  this.find({ active: { $ne: false } });
-  // this.find({ secretTours: { $ne: true } });
-  // this.start = Date.now(); // È un oggetto come un'altro e posso aggiungere chiavi e proprietà
-  next();
-});
 
 // userSchema.post(/^find/, function(docs, next) {
 //   console.log(`the query tooks ${Date.now() - this.start} milliseconds.`);

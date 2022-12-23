@@ -1,3 +1,4 @@
+/* eslint-disable no-plusplus */
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
@@ -14,6 +15,21 @@ const signToken = id => {
 
 const createAndSandToken = (user, statusCode, res) => {
   const token = signToken(user._id);
+  // Definisco le opzioni dei cookie
+  const cookieOption = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
+    secure: false, // ain DEV funziona anche con HTTP e non solo con HTTPS
+    httpOnly: true
+  };
+
+  if (process.env.NODE_ENV === 'production') cookieOption.secure = true; // in production funziona solo con HTTPS
+  res.cookie('jwt', token, cookieOption);
+
+  // Nascondo Password e LoginAttempt dall'output (non modifico il DB o l'utente creato perché non lo salvo)
+  user.password = undefined;
+  user.loginAttempt = undefined;
 
   res.status(statusCode).json({
     status: 'success',
@@ -21,6 +37,9 @@ const createAndSandToken = (user, statusCode, res) => {
     data: { user: user }
   });
 };
+
+// creo la variabile per il timer Login Attempt
+let timerLogIn;
 
 // Creo il metodo per iscriversi al sistema,lo definisco come una funzione asincrona perché devo fare delle operazioni sul database.Aggiungo la variabile next per gestire l'errore. Anche qui uso la funzione catchAsync() per gestire l'errore
 exports.signUp = catchAsync(async (req, res, next) => {
@@ -47,13 +66,37 @@ exports.login = catchAsync(async (req, res, next) => {
     );
   }
   // 2) verifica che l'utente esista && la password sia corretta
-  const user = await User.findOne({ email }).select('+password'); // che è uguale a User.findOne({ email: email }), Aggiungo il campo select con il nome del campo che voglio vedere nell'output e che è nascosto
+  const user = await User.findOne({ email })
+    .select('+password')
+    .select('+loginAttempt'); // che è uguale a User.findOne({ email: email }), Aggiungo il campo select con il nome del campo che voglio vedere nell'output e che è nascosto
 
-  // La verifica che la password sia corretta viene fatta negli user Module dove abbiamo il pacchetto bcrypt. Si Crea un metodo di istanza. Il metodo istanza deve essere eseguito soltanto se l'utente esiste, visto che prende un dato contenente dentro l'oggetto user. Lo inserisco quindi direttamente dentro l'if e con l'operatore OR, se esiste l'utente fa anche la verifica della correttezza della password altrimenti non fa niente.
+  // La verifica che la password sia corretta viene fatta negli user Module dove abbiamo il pacchetto bcrypt. Si Crea un metodo di istanza. Il metodo istanza deve essere eseguito soltanto se l'utente esiste, visto che prende un dato contenuto dentro l'oggetto user. Lo inserisco quindi direttamente dentro l'if e con l'operatore OR, se esiste l'utente fa anche la verifica della correttezza della password altrimenti non fa niente.
 
   if (!user || !(await user.correctPassword(password, user.password))) {
+    // LOGIN ATTEMPT => controllo che non si sia raggiunto il numero massimo di login
+    if (user.loginAttempt > process.env.LOGIN_ATTEMPT) {
+      // Azzera timer per reset attempt
+      if (timerLogIn) clearTimeout(timerLogIn);
+
+      timerLogIn = await user.resetLoginTimer();
+
+      // Ritorna messaggio
+      return next(
+        new AppError(
+          'You have tried to log-in too many time with wrong credential. PLease try again after 10 minutes.',
+          401
+        )
+      );
+    }
+
+    user.wrongAttempt();
+    // user.loginAttempt = ++user.loginAttempt;
+    // await user.save({ validateBeforeSave: false });
+
     return next(new AppError('Incorrect user or password.', 401)); // Controlliamo utente e password insieme in questo modo non diamo un'informazione che una delle due almeno è corretta
   }
+
+  if (user.loginAttempt > 0) user.resetLoginAttempt();
 
   // 3) invia al client il token JWT
 
