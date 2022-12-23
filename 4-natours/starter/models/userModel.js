@@ -87,6 +87,8 @@ userSchema.pre('save', async function(next) {
 
   // Cancello la password di conferma
   this.passwordConfirm = undefined;
+
+  next();
 });
 
 userSchema.pre('save', async function(next) {
@@ -129,16 +131,15 @@ userSchema.methods.resetLoginTimer = function() {
   }, process.env.LOGIN_ATTEMPT_TIMER * 1000 * 60);
 };
 
-userSchema.methods.wrongAttempt = function() {
+userSchema.methods.wrongAttempt = async function() {
   // eslint-disable-next-line no-plusplus
   this.loginAttempt = ++this.loginAttempt;
-  this.save({ validateBeforeSave: false });
+  await this.save({ validateBeforeSave: false });
 };
 
-userSchema.methods.resetLoginAttempt = function() {
-  // eslint-disable-next-line no-plusplus
+userSchema.methods.resetLoginAttempt = async function() {
   this.loginAttempt = 0;
-  this.save({ validateBeforeSave: false });
+  await this.save({ validateBeforeSave: false });
 };
 
 userSchema.methods.changePasswordAfter = function(JWTTimestamp) {

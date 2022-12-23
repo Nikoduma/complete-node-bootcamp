@@ -75,9 +75,10 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!user || !(await user.correctPassword(password, user.password))) {
     // LOGIN ATTEMPT => controllo che non si sia raggiunto il numero massimo di login
     if (user.loginAttempt > process.env.LOGIN_ATTEMPT) {
-      // Azzera timer per reset attempt
+      // Se c'e n'è uno attico, azzera timer per reset attempt
       if (timerLogIn) clearTimeout(timerLogIn);
 
+      // Crea il timer per reset Attempt
       timerLogIn = await user.resetLoginTimer();
 
       // Ritorna messaggio
@@ -89,14 +90,16 @@ exports.login = catchAsync(async (req, res, next) => {
       );
     }
 
-    user.wrongAttempt();
-    // user.loginAttempt = ++user.loginAttempt;
-    // await user.save({ validateBeforeSave: false });
+    await user.wrongAttempt();
 
     return next(new AppError('Incorrect user or password.', 401)); // Controlliamo utente e password insieme in questo modo non diamo un'informazione che una delle due almeno è corretta
   }
 
-  if (user.loginAttempt > 0) user.resetLoginAttempt();
+  // Se ci sono attempt fatti, adesso li annulla e annulla eventiali timers
+  if (user.loginAttempt > 0) {
+    if (timerLogIn) clearTimeout(timerLogIn);
+    await user.resetLoginAttempt();
+  }
 
   // 3) invia al client il token JWT
 
