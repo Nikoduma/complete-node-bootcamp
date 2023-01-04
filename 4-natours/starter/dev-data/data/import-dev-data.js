@@ -1,13 +1,11 @@
 const mongoose = require('mongoose'); // per usare MongoDB
 const fs = require('fs');
-const Tour = require('./../../models/tourModel');
 const dotenv = require('dotenv');
 const { exit } = require('process');
-
-dotenv.config({ path: './../../config.env' }); // leggo il file di configurazione qui ed entra nel processo, per cui sarà visibile in tutti i files.
+const Tour = require('./../../models/tourModel');
+dotenv.config({ path: `${__dirname}./../../config.env` }); // leggo il file di configurazione qui ed entra nel processo, per cui sarà visibile in tutti i files.
 
 // 2. Configuro e apro il db
-
 const DB = process.env.DATABASE.replace(
   '<PASSWORD>',
   process.env.DATABASE_PASSWORD
@@ -27,9 +25,7 @@ mongoose
 
 // leggo il file
 
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/tours-simple.json`, 'utf-8')
-);
+const tours = JSON.parse(fs.readFileSync(`${__dirname}/tours.json`, 'utf-8'));
 
 //cancella tutto dla database
 const deleteData = async () => {

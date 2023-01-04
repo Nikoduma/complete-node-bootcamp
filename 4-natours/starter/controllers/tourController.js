@@ -42,7 +42,7 @@ exports.getOneTour = catchAsync(async (req, res, next) => {
   //   );
   // });
 
-  const tour = await Tour.findById(req.params.id);
+  const tour = await Tour.findById(req.params.id).populate('review');
 
   res.status(200).json({
     status: 'success',
@@ -209,11 +209,4 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
     status: 'success',
     data: plan
   });
-  //     try {
-  // } catch (error) {
-  //   res.status(404).json({
-  //     status: 'Fail',
-  //     message: error
-  //   });
-  // }
 });

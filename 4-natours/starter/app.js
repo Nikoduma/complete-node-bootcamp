@@ -7,6 +7,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const tourRouter = require('./routers/tourRouters');
 const userRouter = require('./routers/userRouters');
+const reviewRouter = require('./routers/reviewRouters');
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 
@@ -75,8 +76,10 @@ app.use((req, res, next) => {
 });
 
 // 3) ROUTES MOUNTING
-app.use('/api/v1/tours', tourRouter);
-app.use('/api/v1/users', userRouter);
+// app.use('/api/v1/tours', tourRouter);
+app.use(`${process.env.API_PATH}tours`, tourRouter);
+app.use(`${process.env.API_PATH}users`, userRouter);
+app.use(`${process.env.API_PATH}reviews`, reviewRouter);
 
 // 4) Se l'esecuzione del codice raggiunge questo punto significa che non è stato catturato da nessun router handler
 //Posso quindi definire come gestire i router che non conosco. Per farlo costruisco una middleware Come sempre che prende tutti quanti gli indirizzi possibili e li gestisce
