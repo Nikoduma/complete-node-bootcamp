@@ -1,8 +1,8 @@
 const User = require('./../models/userModel');
-// const AppError = require('./../utils/appError');
 const APIFeatures = require('./../utils/apiFeatures');
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
+const factory = require('./handlerFacotry');
 
 const filterObj = (obj, ...paramFilter) => {
   const newObj = {};
@@ -81,15 +81,7 @@ exports.getOneUser = (req, res) => {
     message: 'This route is not defined!'
   });
 };
-exports.updateUser = (req, res) => {
-  res.status(500).json({
-    status: `error`,
-    message: 'This route is not defined!'
-  });
-};
-exports.deleteUser = (req, res) => {
-  res.status(500).json({
-    status: `error`,
-    message: 'This route is not defined!'
-  });
-};
+
+// Do NOT change password with this => i middleware di siucurezza non girano con findByIdAndUpdate (che è nella factory Function)
+exports.updateUser = factory.updateOne(User);
+exports.deleteUser = factory.deleteOne(User);

@@ -2,6 +2,7 @@ const Tour = require('./../models/tourModel');
 const AppError = require('./../utils/appError');
 const APIFeatures = require('./../utils/apiFeatures');
 const catchAsync = require('./../utils/catchAsync');
+const factory = require('./handlerFacotry');
 
 // ALIASES
 exports.aliasTopTour = (req, res, next) => {
@@ -44,6 +45,11 @@ exports.getOneTour = catchAsync(async (req, res, next) => {
 
   const tour = await Tour.findById(req.params.id).populate('review');
 
+  if (!tour)
+    return next(
+      new AppError(`No tour found with that ID: ${req.params.id}`, 404)
+    );
+
   res.status(200).json({
     status: 'success',
     data: { tour }
@@ -57,74 +63,80 @@ exports.getOneTour = catchAsync(async (req, res, next) => {
   // }
 });
 
-exports.createTour = catchAsync(async (req, res, next) => {
-  const newTour = await Tour.create(req.body);
+exports.createTour = factory.create(Tour);
 
-  res.status(201).json({
-    status: 'success',
-    data: { tour: newTour }
-  });
-  // try {
-  // } catch (error) {
-  //   res.status(400).json({
-  //     status: 'fail',
-  //     message: error
-  //   });
-  // }
-});
+// exports.createTour = catchAsync(async (req, res, next) => {
+//   const newTour = await Tour.create(req.body);
 
-exports.updateTour = catchAsync(async (req, res, next) => {
-  // se voglio verificare con i validatori devo indicarlo
-  // const tour = await Tour.findByIdAndUpdate(
-  //   req.params.id,
-  //   req.body,
-  //   {
-  //     new: true,
-  //     runValidators: true
-  //   }, // Posso definire quiuna modalità di cattura dell'errore, però non riesco a catturare l'errore di validazione per cui devo fare una routine a parte. La routine è in error controller
-  //   () => {
-  //     return next(new AppError('No tour found with that ID', 404));
-  //   }
-  // );
+//   res.status(201).json({
+//     status: 'success',
+//     data: { tour: newTour }
+//   });
+//   // try {
+//   // } catch (error) {
+//   //   res.status(400).json({
+//   //     status: 'fail',
+//   //     message: error
+//   //   });
+//   // }
+// });
 
-  const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true
-  });
+exports.updateTour = factory.updateOne(Tour);
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour: tour
-    }
-  });
-  //   try {
-  // } catch (error) {
-  //   res.status(404).json({
-  //     status: 'Fail',
-  //     message: error
-  //   });
-  // }
-});
+// exports.updateTour = catchAsync(async (req, res, next) => {
+//   // se voglio verificare con i validatori devo indicarlo
+//   // const tour = await Tour.findByIdAndUpdate(
+//   //   req.params.id,
+//   //   req.body,
+//   //   {
+//   //     new: true,
+//   //     runValidators: true
+//   //   }, // Posso definire quiuna modalità di cattura dell'errore, però non riesco a catturare l'errore di validazione per cui devo fare una routine a parte. La routine è in error controller
+//   //   () => {
+//   //     return next(new AppError('No tour found with that ID', 404));
+//   //   }
+//   // );
 
-exports.deleteTour = catchAsync(async (req, res, next) => {
-  await Tour.findByIdAndDelete(req.params.id, () => {
-    return next(new AppError('No tour found with that ID', 404));
-  });
-  res.status(204).json({
-    status: 'success',
-    data: {
-      message: 'Deleted'
-    }
-  });
-  // try {
-  // } catch (error) {
-  //   res.status(404).json({
-  //     status: 'Fail',
-  //     message: error
-  //   });
-  // }
-});
+//   const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+//     new: true,
+//     runValidators: true
+//   });
+
+//   res.status(200).json({
+//     status: 'success',
+//     data: {
+//       tour: tour
+//     }
+//   });
+//   //   try {
+//   // } catch (error) {
+//   //   res.status(404).json({
+//   //     status: 'Fail',
+//   //     message: error
+//   //   });
+//   // }
+// });
+
+exports.deleteTour = factory.deleteOne(Tour);
+
+// exports.deleteTour = catchAsync(async (req, res, next) => {
+//   await Tour.findByIdAndDelete(req.params.id, () => {
+//     return next(new AppError('No tour found with that ID', 404));
+//   });
+//   res.status(204).json({
+//     status: 'success',
+//     data: {
+//       message: 'Deleted'
+//     }
+//   });
+//   // try {
+//   // } catch (error) {
+//   //   res.status(404).json({
+//   //     status: 'Fail',
+//   //     message: error
+//   //   });
+//   // }
+// });
 
 exports.getTourStats = catchAsync(async (req, res, next) => {
   const stats = await Tour.aggregate([

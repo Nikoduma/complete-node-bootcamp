@@ -1,4 +1,5 @@
 const fs = require('fs');
+const AppError = require('./../utils/appError');
 
 const tours = JSON.parse(
   fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
@@ -44,6 +45,10 @@ exports.getTour = (req, res) => {
   const id = req.params.id * 1;
 
   const tour = tours.find(el => el.id === id);
+
+  if (!tour) {
+  return 
+}
 
   res.status(200).json({
     status: 'success',
