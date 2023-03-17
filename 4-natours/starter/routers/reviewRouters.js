@@ -4,16 +4,12 @@ const authController = require('../controllers/authController');
 
 const router = express.Router({ mergeParams: true });
 
-// POST /tour/r23452rfw/reviews
-// GET /tour/r23452rfw/reviews
-// POST /reviews
-// con il route sotto, ho accesso a tutte e due le configurazioni sopra. Ance se il TourId viene da un altro route.
+router.use(authController.protect);
 
 router
   .route('/')
   .get(reviewController.getAllReviews)
   .post(
-    authController.protect,
     authController.restictTo('user'),
     reviewController.setTouUserIds,
     reviewController.createReview
@@ -21,7 +17,15 @@ router
 
 router
   .route('/:id')
-  .delete(reviewController.deleteReview)
-  .patch(authController.protect, reviewController.updateReview);
+  .get(reviewController.readReview)
+  .delete(
+    authController.restictTo('user', 'admin'),
+    reviewController.deleteReview
+  )
+  .patch(
+    authController.restictTo('user', 'admin'),
+    authController.protect,
+    reviewController.updateReview
+  );
 
 module.exports = router;

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose'); // per usare MongoDB
+const Tour = require('./tourModel');
 
 // 1. creo lo schema
 const reviewSchema = new mongoose.Schema(
@@ -53,6 +54,34 @@ reviewSchema.pre(/^find/, function(next) {
     select: 'name photo'
   });
   next();
+});
+
+// Metodo Statico per calcolo media. Verrà chiamato in un MIDDLEWARE. Usiamo un metodo statico perché vogliamo che la chiave this punti al modello su cui sto lavorando (reviewModel). Questo perché voglio usare .aggregate e lo devo usare sul model per farlo funzionare su mongoose.
+//==> ogni volta che inserisco una recenzione con Rating, aggiorno la media del rating. Ma la recenzione è vincolata al tour, per cui mi serve il tpur ID.
+reviewSchema.statics.calcAverageRatings = async function(tourId) {
+  const stats = await this.aggregate([
+    {
+      $match: { tour: tourId }
+    },
+    {
+      $group: {
+        _id: '$tour',
+        nRating: { $sum: 1 },
+        avgRating: { $avg: '$rating' }
+      }
+    }
+  ]);
+  await Tour.findByIdAndUpdate(tourId, {
+    ratingsAverage: stats[0].avgRating,
+    ratingsQuantity: stats[0].nRating
+  });
+};
+
+reviewSchema.post('save', function() {
+  // this punta al documento attuale (che viene salvato), punta alle review e calcola le medie quando sono già state salvate => post.
+  // dovrei scrivere Review.calcAverageRatings(this.tour) ma non posso farlo, perché venendo tutto eseguito in sequenza, Review ancora non è definito. (lo definisco qui sotto) Ma non posso nemmeno spostare questo dopo la riga dove definisco review, perché altrimenti la definirei senza questo post('save'). La soluzione è usare this.constructor perché punta al costruttore del documento che viene salvato a prescindere dal nome che ha
+
+  this.constructor.calcAverageRatings(this.tour);
 });
 
 // 2. creo il modello dallo schema

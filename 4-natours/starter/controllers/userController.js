@@ -13,20 +13,25 @@ const filterObj = (obj, ...paramFilter) => {
   return newObj;
 };
 
-exports.getAllUsers = catchAsync(async (req, res, next) => {
-  const features = new APIFeatures(User.find(), req.query)
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
-  const users = await features.query;
+// exports.getAllUsers = catchAsync(async (req, res, next) => {
+//   const features = new APIFeatures(User.find(), req.query)
+//     .filter()
+//     .sort()
+//     .limitFields()
+//     .paginate();
+//   const users = await features.query;
 
-  res.status(200).json({
-    status: 'success',
-    results: users.length,
-    data: { users }
-  });
-});
+//   res.status(200).json({
+//     status: 'success',
+//     results: users.length,
+//     data: { users }
+//   });
+// });
+
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   // 1. Create error if user POSTs a password
@@ -72,16 +77,13 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
 exports.createUser = (req, res) => {
   res.status(500).json({
     status: `error`,
-    message: 'This route is not defined!'
-  });
-};
-exports.getOneUser = (req, res) => {
-  res.status(500).json({
-    status: `error`,
-    message: 'This route is not defined!'
+    message: 'This route does not exist! Please go to /signUp.'
   });
 };
 
+exports.getAllUsers = factory.getAll(User);
+exports.getOneUser = factory.readOne(User);
+exports.deleteUser = factory.deleteOne(User);
+
 // Do NOT change password with this => i middleware di siucurezza non girano con findByIdAndUpdate (che è nella factory Function)
 exports.updateUser = factory.updateOne(User);
-exports.deleteUser = factory.deleteOne(User);

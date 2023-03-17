@@ -1,6 +1,4 @@
 const Tour = require('./../models/tourModel');
-const AppError = require('./../utils/appError');
-const APIFeatures = require('./../utils/apiFeatures');
 const catchAsync = require('./../utils/catchAsync');
 const factory = require('./handlerFacotry');
 
@@ -14,130 +12,14 @@ exports.aliasTopTour = (req, res, next) => {
 };
 
 // METODI
-exports.getAllTours = catchAsync(async (req, res, next) => {
-  const features = new APIFeatures(Tour.find(), req.query)
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
-  const tours = await features.query;
+exports.getAllTours = factory.getAll(Tour);
 
-  res.status(200).json({
-    status: 'success',
-    results: tours.length,
-    data: { tours }
-  });
-  // try {
-  // // } catch (error) {
-  // //   res.status(404).json({
-  // //     status: 'Fail',
-  // //     message: error
-  // //   });
-  // // }
+exports.getOneTour = factory.readOne(Tour, {
+  path: 'reviews'
 });
-
-exports.getOneTour = catchAsync(async (req, res, next) => {
-  // const tour = await Tour.findById(req.params.id, () => {
-  //   return next(
-  //     new AppError(`No tour found with that ID: ${req.params.id}`, 404)
-  //   );
-  // });
-
-  const tour = await Tour.findById(req.params.id).populate('review');
-
-  if (!tour)
-    return next(
-      new AppError(`No tour found with that ID: ${req.params.id}`, 404)
-    );
-
-  res.status(200).json({
-    status: 'success',
-    data: { tour }
-  });
-  // try {
-  // } catch (error) {
-  //   res.status(404).json({
-  //     status: 'Fail',
-  //     message: error
-  //   });
-  // }
-});
-
 exports.createTour = factory.create(Tour);
-
-// exports.createTour = catchAsync(async (req, res, next) => {
-//   const newTour = await Tour.create(req.body);
-
-//   res.status(201).json({
-//     status: 'success',
-//     data: { tour: newTour }
-//   });
-//   // try {
-//   // } catch (error) {
-//   //   res.status(400).json({
-//   //     status: 'fail',
-//   //     message: error
-//   //   });
-//   // }
-// });
-
 exports.updateTour = factory.updateOne(Tour);
-
-// exports.updateTour = catchAsync(async (req, res, next) => {
-//   // se voglio verificare con i validatori devo indicarlo
-//   // const tour = await Tour.findByIdAndUpdate(
-//   //   req.params.id,
-//   //   req.body,
-//   //   {
-//   //     new: true,
-//   //     runValidators: true
-//   //   }, // Posso definire quiuna modalità di cattura dell'errore, però non riesco a catturare l'errore di validazione per cui devo fare una routine a parte. La routine è in error controller
-//   //   () => {
-//   //     return next(new AppError('No tour found with that ID', 404));
-//   //   }
-//   // );
-
-//   const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-//     new: true,
-//     runValidators: true
-//   });
-
-//   res.status(200).json({
-//     status: 'success',
-//     data: {
-//       tour: tour
-//     }
-//   });
-//   //   try {
-//   // } catch (error) {
-//   //   res.status(404).json({
-//   //     status: 'Fail',
-//   //     message: error
-//   //   });
-//   // }
-// });
-
 exports.deleteTour = factory.deleteOne(Tour);
-
-// exports.deleteTour = catchAsync(async (req, res, next) => {
-//   await Tour.findByIdAndDelete(req.params.id, () => {
-//     return next(new AppError('No tour found with that ID', 404));
-//   });
-//   res.status(204).json({
-//     status: 'success',
-//     data: {
-//       message: 'Deleted'
-//     }
-//   });
-//   // try {
-//   // } catch (error) {
-//   //   res.status(404).json({
-//   //     status: 'Fail',
-//   //     message: error
-//   //   });
-//   // }
-// });
-
 exports.getTourStats = catchAsync(async (req, res, next) => {
   const stats = await Tour.aggregate([
     {
@@ -167,13 +49,6 @@ exports.getTourStats = catchAsync(async (req, res, next) => {
     status: 'success',
     data: stats
   });
-  //     try {
-  // } catch (error) {
-  //   res.status(404).json({
-  //     status: 'Fail',
-  //     message: error
-  //   });
-  // }
 });
 
 exports.getMonthlyPlan = catchAsync(async (req, res, next) => {

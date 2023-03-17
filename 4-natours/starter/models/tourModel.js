@@ -117,13 +117,16 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
+tourSchema.index({ slug: 1 });
+tourSchema.index({ price: 1, ratingsAverage: -1 }); //<<=== definisco come indice il prezzo in maniera ascendente (-1 dicendente), imposto i più economici prima.
+// tourSchema.index({ price: 1});
 // 1.1 Virtual properties
 tourSchema.virtual('durationWeeks').get(function() {
   return this.duration / 7;
 });
 
 // Virtual Populate
-tourSchema.virtual('review', {
+tourSchema.virtual('reviews', {
   ref: 'Review',
   foreignField: 'tour',
   localField: '_id'
